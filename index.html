@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="ms" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Keputusan Peperiksaan - Sekolah Agama Parit Jamil</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter, Plus Jakarta Sans & Amiri -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <!-- html2pdf.js for Client-Side PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                            950: '#022c22'
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        arabic: ['"Amiri"', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .islamic-pattern {
+            background-color: #064e3b;
+            background-image: radial-gradient(#047857 0.75px, transparent 0.75px), radial-gradient(#047857 0.75px, #064e3b 0.75px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-800 font-sans antialiased flex flex-col justify-between" x-data="schoolPortal()">
+
+    <!-- Header / Navigation -->
+    <header class="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white shadow-xl border-b-4 border-gold-500 relative z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- School Emblem & Title -->
+            <div class="flex items-center space-x-4 text-center md:text-left">
+                <!-- Dynamic School Logo -->
+                <div class="w-14 h-14 rounded-2xl bg-white p-1 flex items-center justify-center shadow-lg border-2 border-gold-400 overflow-hidden shrink-0">
+                    <img :src="schoolConfig.logoUrl" 
+                         :alt="schoolConfig.name" 
+                         @error="$data.schoolConfig.logoUrl = defaultLogo"
+                         class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <div class="flex items-center justify-center md:justify-start gap-2">
+                        <span class="text-xs uppercase tracking-widest px-2 py-0.5 rounded bg-gold-500/20 text-gold-400 font-semibold border border-gold-500/30">Rasmi</span>
+                        <span class="text-xs text-emerald-300">Sekolah Agama Kerajaan Negeri Johor</span>
+                    </div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white font-sans mt-0.5" x-text="schoolConfig.name">
+                    </h1>
+                    <p class="text-xs text-emerald-200">Portal Semakan Keputusan Peperiksaan & Analisis Prestasi</p>
+                </div>
+            </div>
+
+            <!-- Role Selector & Quick Info -->
+            <div class="flex items-center gap-3">
+                <template x-if="currentUser">
+                    <div class="flex items-center gap-3 bg-emerald-900/80 px-4 py-2 rounded-xl border border-emerald-700/50 shadow-inner">
+                        <div class="w-9 h-9 rounded-full bg-gold-500 flex items-center justify-center text-emerald-950 font-bold text-sm">
+                            <i class="fas" :class="currentUser.role === 'teacher' ? 'fa-user-shield' : 'fa-user-graduate'"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-xs text-emerald-300 capitalize" x-text="currentUser.role === 'teacher' ? 'Pentadbir Sekolah' : 'Ibu Bapa / Penjaga'"></p>
+                            <p class="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-xs" x-text="currentUser.name"></p>
+                        </div>
+                        <button @click="logout()" class="ml-2 bg-rose-600 hover:bg-rose-700 text-white p-2 rounded-lg text-xs transition shadow" title="Log Keluar">
+                            <i class="fas fa-sign-out-alt"></i> Log Keluar
+                        </button>
+                    </div>
+                </template>
+
+                <template x-if="!currentUser">
+                    <div class="flex bg-emerald-900/90 p-1.5 rounded-xl border border-emerald-700 shadow-inner">
+                        <button @click="activeTab = 'parent'" 
+                                :class="activeTab === 'parent' ? 'bg-gold-500 text-emerald-950 font-bold shadow' : 'text-emerald-100 hover:text-white'"
+                                class="px-4 py-2 rounded-lg text-xs md:text-sm transition flex items-center gap-2">
+                            <i class="fas fa-user-shield"></i> Portal Ibu Bapa
+                        </button>
+                        <button @click="activeTab = 'teacher'" 
+                                :class="activeTab === 'teacher' ? 'bg-gold-500 text-emerald-950 font-bold shadow' : 'text-emerald-100 hover:text-white'"
+                                class="px-4 py-2 rounded-lg text-xs md:text-sm transition flex items-center gap-2">
+                            <i class="fas fa-chalkboard-teacher"></i> Dashboard Pentadbir
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- NOTIFICATION MODAL -->
+        <div x-show="modal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border-t-4 border-gold-500 transform transition-all">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                         :class="modal.type === 'error' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'">
+                        <i class="fas" :class="modal.type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900" x-text="modal.title"></h3>
+                        <p class="text-xs text-slate-500">Sistem Semakan SAPJ</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 mb-6 leading-relaxed" x-text="modal.message"></p>
+                <div class="flex justify-end">
+                    <button @click="modal.show = false" class="bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition shadow-lg">
+                        Faham / Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== PARENT VIEW =================== -->
+        <template x-if="!currentUser && activeTab === 'parent'">
+            <div class="max-w-md mx-auto bg-white rounded-3xl shadow-xl border border-emerald-100 overflow-hidden mt-6">
+                <div class="islamic-pattern px-6 py-8 text-white text-center relative">
+                    <div class="w-20 h-20 mx-auto mb-3 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-lg border-2 border-gold-400">
+                        <img :src="schoolConfig.logoUrl" 
+                             :alt="schoolConfig.name" 
+                             @error="$data.schoolConfig.logoUrl = defaultLogo"
+                             class="w-full h-full object-contain">
+                    </div>
+                    <h2 class="text-2xl font-bold font-sans">Semakan Keputusan Murid</h2>
+                    <p class="text-xs text-emerald-200 mt-1">Sila masukkan No. ID Murid / MyKid & PIN keselamatan</p>
+                </div>
+                <div class="p-6 sm:p-8 space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Nombor ID Murid / MyKid</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fas fa-id-card"></i>
+                            </span>
+                            <input type="text" x-model="parentLoginForm.mykid" placeholder="Contoh: M001 atau No. MyKid" 
+                                   class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 text-sm outline-none transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">No. PIN Keselamatan</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input :type="showParentPin ? 'text' : 'password'" x-model="parentLoginForm.pin" placeholder="6-digit PIN" 
+                                   class="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 text-sm outline-none transition">
+                            <button type="button" @click="showParentPin = !showParentPin" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                <i class="fas" :class="showParentPin ? 'fa-eye-slash' : 'fa-eye'"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button @click="loginParent()" class="w-full bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-search"></i> Semak Keputusan Sekarang
+                    </button>
+
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 flex items-start gap-3">
+                        <i class="fas fa-shield-alt text-amber-600 text-base mt-0.5"></i>
+                        <div>
+                            <span class="font-bold block">Privasi & Keselamatan Terjamin</span>
+                            Keputusan peperiksaan diakses menggunakan ID Murid yang sah berserta PIN keselamatan.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Logged In Parent View -->
+        <template x-if="currentUser && currentUser.role === 'parent'">
+            <div class="space-y-6">
+                
+                <!-- Student Summary Banner -->
+                <div class="bg-white rounded-2xl p-6 shadow-md border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="flex items-center space-x-4 text-center md:text-left flex-col md:flex-row">
+                        <div class="w-20 h-20 rounded-2xl bg-emerald-100 border-2 border-emerald-500/30 flex items-center justify-center text-emerald-800 font-bold text-3xl shadow">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-center md:justify-start gap-2">
+                                <span class="bg-emerald-100 text-emerald-800 font-bold text-xs px-2.5 py-0.5 rounded-full" x-text="currentStudent.darjah"></span>
+                                <span class="text-xs text-slate-500">ID Murid: <span class="font-mono font-medium" x-text="currentStudent.id"></span></span>
+                            </div>
+                            <h2 class="text-2xl font-bold text-slate-900 mt-1" x-text="currentStudent.name"></h2>
+                            <p class="text-xs text-slate-500" x-text="schoolConfig.name + ', Muar, Johor'"></p>
+                        </div>
+                    </div>
+
+                    <!-- Exam Selector Tabs -->
+                    <div class="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                        <template x-for="(examLabel, examKey) in examsList" :key="examKey">
+                            <button @click="selectedExam = examKey"
+                                    :class="selectedExam === examKey ? 'bg-emerald-800 text-white font-bold shadow' : 'text-slate-600 hover:text-slate-900'"
+                                    class="px-4 py-2 rounded-lg text-xs transition font-medium"
+                                    x-text="examLabel">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Report Card Slip Container -->
+                <div id="pdf-report-area" class="bg-white rounded-3xl shadow-xl border border-emerald-100 overflow-hidden print:shadow-none">
+                    
+                    <!-- Slip Header -->
+                    <div class="islamic-pattern px-6 py-8 text-white text-center relative border-b-4 border-gold-500">
+                        <div class="max-w-2xl mx-auto flex flex-col items-center">
+                            <div class="w-20 h-20 mb-3 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-md border-2 border-gold-400">
+                                <img :src="schoolConfig.logoUrl" 
+                                     :alt="schoolConfig.name" 
+                                     @error="$data.schoolConfig.logoUrl = defaultLogo"
+                                     class="w-full h-full object-contain">
+                            </div>
+                            <h3 class="text-xs tracking-widest uppercase font-bold text-gold-400">Jabatan Agama Islam Negeri Johor (JAINJ)</h3>
+                            <h2 class="text-xl md:text-2xl font-bold mt-1 font-sans">LAPORAN KEPUTUSAN PEPERIKSAAN</h2>
+                            <p class="text-xs text-emerald-200 mt-1" x-text="schoolConfig.name + ', Muar'"></p>
+                        </div>
+                    </div>
+
+                    <!-- Student Meta Info Grid -->
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div>
+                            <span class="text-slate-500 block">Nama Murid:</span>
+                            <strong class="text-slate-900 text-sm" x-text="currentStudent.name"></strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">ID Murid:</span>
+                            <strong class="text-slate-900 text-sm font-mono" x-text="currentStudent.id"></strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Kelas:</span>
+                            <strong class="text-slate-900 text-sm" x-text="currentStudent.darjah"></strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Peperiksaan & Tahun:</span>
+                            <strong class="text-emerald-700 text-sm" x-text="(examsList[selectedExam] || selectedExam) + ' (' + selectedYear + ')'"></strong>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Rank Highlight Banner -->
+                    <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-trophy text-gold-400 text-lg"></i>
+                            <span>Kedudukan Dalam Kelas: <strong class="text-base text-gold-400 font-mono" x-text="getStudentRankDetail(currentStudent.id, selectedExam, selectedYear).rankText"></strong></span>
+                        </div>
+                        <div class="flex items-center gap-4 text-emerald-200">
+                            <span>Jumlah Markah: <strong class="text-white font-mono" x-text="getStudentTotals(currentStudent.id, selectedExam, selectedYear).obtained + ' / ' + getStudentTotals(currentStudent.id, selectedExam, selectedYear).max"></strong></span>
+                            <span>Peratus Keseluruhan: <strong class="text-white font-mono" x-text="getStudentTotals(currentStudent.id, selectedExam, selectedYear).percentage + '%'"></strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Results Table -->
+                    <div class="p-6 overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b-2 border-slate-200 text-xs uppercase text-slate-500 tracking-wider">
+                                    <th class="py-3 px-4">Mata Pelajaran (Subjects)</th>
+                                    <th class="py-3 px-4 text-center">Markah (100)</th>
+                                    <th class="py-3 px-4 text-center">Gred (A: 85+)</th>
+                                    <th class="py-3 px-4">Ulasan / Prestasi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                <tr x-for="subjName in subjectsList" :key="subjName" class="hover:bg-slate-50/80">
+                                    <td class="py-4 px-4 font-semibold text-slate-800" x-text="subjName"></td>
+                                    <td class="py-4 px-4 text-center font-mono font-bold text-slate-700" x-text="getSubjectMark(currentStudent.id, selectedExam, selectedYear, subjName)"></td>
+                                    <td class="py-4 px-4 text-center">
+                                        <span class="px-3 py-1 rounded-lg text-xs font-bold font-mono"
+                                              :class="getGradeBadgeClass(getSubjectMark(currentStudent.id, selectedExam, selectedYear, subjName))"
+                                              x-text="calculateGrade(getSubjectMark(currentStudent.id, selectedExam, selectedYear, subjName))">
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-4 text-slate-600 text-xs" x-text="getSubjectRemarkBySubject(currentStudent.id, selectedExam, selectedYear, subjName)"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary Stats & Teacher Remarks -->
+                    <div class="bg-emerald-50/50 p-6 border-t border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div class="grid grid-cols-3 gap-4 text-center w-full md:w-auto">
+                            <div class="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm">
+                                <span class="text-[11px] uppercase tracking-wider text-slate-500 block">Jumlah Markah</span>
+                                <span class="text-lg font-bold text-emerald-800 font-mono" x-text="getStudentTotals(currentStudent.id, selectedExam, selectedYear).obtained + ' / ' + getStudentTotals(currentStudent.id, selectedExam, selectedYear).max"></span>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm">
+                                <span class="text-[11px] uppercase tracking-wider text-slate-500 block">Peratusan</span>
+                                <span class="text-lg font-bold text-teal-700 font-mono" x-text="getStudentTotals(currentStudent.id, selectedExam, selectedYear).percentage + '%'"></span>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm">
+                                <span class="text-[11px] uppercase tracking-wider text-slate-500 block">Kedudukan Kelas</span>
+                                <span class="text-lg font-bold text-gold-600 font-mono" x-text="getStudentRankDetail(currentStudent.id, selectedExam, selectedYear).rankText"></span>
+                            </div>
+                        </div>
+
+                        <div class="w-full md:w-1/2 space-y-2">
+                            <div class="bg-white p-4 rounded-xl border border-emerald-200 shadow-sm">
+                                <span class="text-xs font-bold text-emerald-900 block mb-1"><i class="fas fa-comment-dots text-gold-500 mr-1"></i> Ulasan Guru Kelas:</span>
+                                <p class="text-xs text-slate-600 italic" x-text="getTeacherRemarkOverall(getStudentTotals(currentStudent.id, selectedExam, selectedYear).percentage)"></p>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-slate-200 text-xs flex justify-between items-center text-slate-600">
+                                <span>Pengesahan Pentadbir:</span>
+                                <span class="font-bold text-emerald-950 uppercase" x-text="schoolConfig.adminName"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PDF Action Bar -->
+                    <div class="bg-white px-6 py-4 border-t border-slate-200 flex justify-end gap-3 print:hidden">
+                        <button @click="downloadPDF()" :disabled="isGeneratingPDF" 
+                                class="bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl font-medium text-xs transition flex items-center gap-2 shadow disabled:opacity-50">
+                            <i class="fas" :class="isGeneratingPDF ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
+                            <span x-text="isGeneratingPDF ? 'Sedang menjana PDF...' : 'Muat Turun Keputusan PDF'"></span>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </template>
+
+        <!-- =================== TEACHER / ADMIN DASHBOARD =================== -->
+        <template x-if="!currentUser && activeTab === 'teacher'">
+            <div class="max-w-md mx-auto bg-white rounded-3xl shadow-xl border border-emerald-100 overflow-hidden mt-6">
+                <div class="islamic-pattern px-6 py-8 text-white text-center relative">
+                    <div class="w-20 h-20 mx-auto mb-3 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-lg border-2 border-gold-400">
+                        <img :src="schoolConfig.logoUrl" 
+                             :alt="schoolConfig.name" 
+                             @error="$data.schoolConfig.logoUrl = defaultLogo"
+                             class="w-full h-full object-contain">
+                    </div>
+                    <h2 class="text-2xl font-bold font-sans">Pengesahan Pentadbir</h2>
+                    <p class="text-xs text-emerald-200 mt-1">Sila masukkan kata laluan untuk mengakses Dashboard Pentadbir</p>
+                </div>
+                <div class="p-6 sm:p-8 space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Kata Laluan Pentadbir</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fas fa-key"></i>
+                            </span>
+                            <input :type="showTeacherPassword ? 'text' : 'password'" x-model="teacherLoginForm.password" placeholder="Masukkan kata laluan"
+                                   @keyup.enter="loginTeacher()"
+                                   class="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 text-sm outline-none transition">
+                            <button type="button" @click="showTeacherPassword = !showTeacherPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                <i class="fas" :class="showTeacherPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button @click="loginTeacher()" class="w-full bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
+                        <i class="fas fa-sign-in-alt"></i> Masuk Dashboard
+                    </button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Logged In Teacher/Admin Dashboard -->
+        <template x-if="currentUser && currentUser.role === 'teacher'">
+            <div class="space-y-6">
+
+                <!-- Admin Profile & School Badge -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 rounded-2xl bg-white p-1 flex items-center justify-center shadow border-2 border-gold-400 overflow-hidden shrink-0">
+                            <img :src="schoolConfig.logoUrl" 
+                                 :alt="schoolConfig.name" 
+                                 @error="$data.schoolConfig.logoUrl = defaultLogo"
+                                 class="w-full h-full object-contain">
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-emerald-800 uppercase tracking-widest bg-emerald-100 px-2.5 py-0.5 rounded-full">Pentadbir Aktif</span>
+                            <h2 class="text-xl font-extrabold text-slate-900 mt-0.5" x-text="schoolConfig.adminName"></h2>
+                            <p class="text-xs text-slate-500" x-text="schoolConfig.name + ' • Port Pengurusan Sekolah'"></p>
+                        </div>
+                    </div>
+
+                    <button @click="openLogoModal()" class="bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-600 hover:to-amber-700 text-emerald-950 font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 shadow">
+                        <i class="fas fa-image"></i> Kemaskini Logo Sekolah
+                    </button>
+                </div>
+
+                <!-- Teacher Controls & Sub-Navigation -->
+                <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-3 rounded-2xl shadow-sm border border-emerald-100">
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="teacherTab = 'overview'" 
+                                :class="teacherTab === 'overview' ? 'bg-emerald-800 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'"
+                                class="px-5 py-2.5 rounded-xl text-xs md:text-sm transition flex items-center gap-2">
+                            <i class="fas fa-chart-pie"></i> Analisis & Statistik
+                        </button>
+                        <button @click="teacherTab = 'students'" 
+                                :class="teacherTab === 'students' ? 'bg-emerald-800 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'"
+                                class="px-5 py-2.5 rounded-xl text-xs md:text-sm transition flex items-center gap-2">
+                            <i class="fas fa-users"></i> Senarai & Markah Murid
+                        </button>
+                        <button @click="teacherTab = 'rankings'" 
+                                :class="teacherTab === 'rankings' ? 'bg-emerald-800 text-white font-bold' : 'text-slate-600 hover:bg-slate-100'"
+                                class="px-5 py-2.5 rounded-xl text-xs md:text-sm transition flex items-center gap-2">
+                            <i class="fas fa-trophy text-gold-500"></i> Kedudukan Kelas
+                        </button>
+                    </div>
+
+                    <!-- CSV Actions Bar -->
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                        <button @click="downloadCSVTemplate()" class="bg-teal-50 hover:bg-teal-100 text-teal-900 font-semibold px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5 border border-teal-300">
+                            <i class="fas fa-file-download text-teal-700"></i> Muat Turun Templat CSV
+                        </button>
+                        <button @click="exportCSV()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-semibold px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5 border border-emerald-300">
+                            <i class="fas fa-file-excel text-emerald-700"></i> Eksport Markah CSV
+                        </button>
+                        <button @click="importModal.show = true" class="bg-gold-500 hover:bg-gold-600 text-emerald-950 font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow">
+                            <i class="fas fa-file-import"></i> Import CSV / Muat Naik
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 1: ANALYTICS DASHBOARD -->
+                <template x-if="teacherTab === 'overview'">
+                    <div class="space-y-6">
+                        
+                        <!-- KPI Metric Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500 font-medium">Jumlah Murid</p>
+                                    <h4 class="text-2xl font-bold text-slate-800 font-mono" x-text="students.length"></h4>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl font-bold">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500 font-medium">Peratus Lulus Keseluruhan</p>
+                                    <h4 class="text-2xl font-bold text-slate-800 font-mono" x-text="calculatePassPercentage() + '%'"></h4>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center text-xl font-bold">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500 font-medium">Purata Peratus Sekolah</p>
+                                    <h4 class="text-2xl font-bold text-slate-800 font-mono" x-text="calculateSchoolAverage() + '%'"></h4>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-xl bg-gold-500/25 text-gold-600 flex items-center justify-center text-xl font-bold">
+                                    <i class="fas fa-school"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500 font-medium">Jumlah Kelas Terlibat</p>
+                                    <h4 class="text-2xl font-bold text-slate-800 font-mono" x-text="getDetectedClasses().length + ' Kelas'"></h4>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts & Breakdown Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            
+                            <!-- Grade Distribution Card -->
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100">
+                                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-chart-bar text-emerald-700"></i> Taburan Gred Keseluruhan (Gred A: 85+)
+                                </h3>
+                                <div class="space-y-4 pt-2">
+                                    <template x-for="gStats in getGradeDistribution()" :key="gStats.grade">
+                                        <div>
+                                            <div class="flex justify-between text-xs font-bold mb-1">
+                                                <span :class="gStats.colorClass" x-text="gStats.label"></span>
+                                                <span class="text-slate-600 font-mono" x-text="gStats.count + ' (' + gStats.percentage + '%)'"></span>
+                                            </div>
+                                            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                                <div class="h-full rounded-full" :class="gStats.bgClass" :style="'width: ' + gStats.percentage + '%'"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Subject Performance Breakdown -->
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100">
+                                <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-book-open text-emerald-700"></i> Prestasi Purata Mengikut Subjek
+                                </h3>
+                                <div class="space-y-3 max-h-[320px] overflow-y-auto pr-2">
+                                    <template x-for="subj in subjectsList" :key="subj">
+                                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                            <span class="text-xs font-bold text-slate-800" x-text="subj"></span>
+                                            <div class="flex items-center gap-3">
+                                                <span class="text-xs font-mono font-bold text-emerald-700" x-text="getSubjAverage(subj) + ' / 100'"></span>
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold" 
+                                                      :class="getSubjAverage(subj) >= 85 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                                      x-text="getSubjAverage(subj) >= 85 ? 'Mumtaz (A)' : 'Baik'">
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </template>
+
+                <!-- TAB 2: STUDENTS & MARKS MANAGEMENT -->
+                <template x-if="teacherTab === 'students'">
+                    <div class="bg-white rounded-3xl shadow-sm border border-emerald-100 overflow-hidden">
+                        
+                        <!-- Filter & Search Bar -->
+                        <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="relative w-full md:w-96">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" x-model="searchQuery" placeholder="Cari nama murid atau ID..." 
+                                       class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 text-xs outline-none">
+                            </div>
+                            <div class="flex items-center gap-3 w-full md:w-auto">
+                                <select x-model="filterDarjah" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-600">
+                                    <option value="">Semua Kelas</option>
+                                    <template x-for="cls in getDetectedClasses()" :key="cls">
+                                        <option :value="cls" x-text="cls"></option>
+                                    </template>
+                                </select>
+
+                                <select x-model="selectedExam" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-600">
+                                    <template x-for="(label, key) in examsList" :key="key">
+                                        <option :value="key" x-text="label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Students Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                               <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 tracking-wider">
+                                        <th class="py-3 px-6">ID Murid</th>
+                                        <th class="py-3 px-6">Nama Murid</th>
+                                        <th class="py-3 px-4">Kelas</th>
+                                        <th class="py-3 px-4 text-center">Jumlah Markah</th>
+                                        <th class="py-3 px-4 text-center">Peratus</th>
+                                        <th class="py-3 px-4 text-center">Kedudukan Kelas</th>
+                                        <th class="py-3 px-6 text-center">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-sm">
+                                    <template x-for="student in filteredStudents" :key="student.id">
+                                        <tr class="hover:bg-slate-50/80">
+                                            <td class="py-4 px-6 font-mono text-xs text-slate-500" x-text="student.id"></td>
+                                            <td class="py-4 px-6 font-semibold text-slate-800" x-text="student.name"></td>
+                                            <td class="py-4 px-4">
+                                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800" x-text="student.darjah"></span>
+                                            </td>
+                                            <td class="py-4 px-4 text-center font-mono font-bold text-slate-700" x-text="getStudentTotals(student.id, selectedExam, selectedYear).obtained + ' / ' + getStudentTotals(student.id, selectedExam, selectedYear).max"></td>
+                                            <td class="py-4 px-4 text-center font-mono font-bold text-emerald-700" x-text="getStudentTotals(student.id, selectedExam, selectedYear).percentage + '%'"></td>
+                                            <td class="py-4 px-4 text-center font-mono font-bold text-amber-600" x-text="getStudentRankDetail(student.id, selectedExam, selectedYear).rankText"></td>
+                                            <td class="py-4 px-6 text-center">
+                                                <button @click="openEditMarks(student)" class="bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded-lg text-xs transition font-medium shadow">
+                                                    <i class="fas fa-edit mr-1"></i> Kemaskini Markah
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="filteredStudents.length === 0">
+                                        <tr>
+                                            <td colspan="7" class="py-8 text-center text-xs text-slate-400 italic">Tiada rekod murid ditemui. Sila import data CSV untuk mula memasukkan rekod.</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </template>
+
+                <!-- TAB 3: CLASS RANKINGS TAB -->
+                <template x-if="teacherTab === 'rankings'">
+                    <div class="bg-white rounded-3xl shadow-sm border border-emerald-100 p-6 space-y-6">
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-4 border-b pb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <i class="fas fa-trophy text-gold-500"></i> Kedudukan Murid Dalam Kelas (Competition Ranking)
+                                </h3>
+                                <p class="text-xs text-slate-500">Kedudukan dikira secara berasingan mengikut Kelas, Peperiksaan dan Tahun.</p>
+                            </div>
+
+                            <!-- Filter Selection -->
+                            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-slate-500">Tahun</label>
+                                    <select x-model="rankingFilter.year" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-600">
+                                        <template x-for="yr in getDetectedYears()" :key="yr">
+                                            <option :value="yr" x-text="yr"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-slate-500">Peperiksaan</label>
+                                    <select x-model="rankingFilter.exam" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-600">
+                                        <template x-for="(label, key) in examsList" :key="key">
+                                            <option :value="key" x-text="label"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-slate-500">Kelas</label>
+                                    <select x-model="rankingFilter.darjah" class="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-600">
+                                        <template x-for="cls in getDetectedClasses()" :key="cls">
+                                            <option :value="cls" x-text="cls"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div class="self-end flex gap-2">
+                                    <button @click="printRankingList()" class="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+                                        <i class="fas fa-print"></i> Cetak
+                                    </button>
+                                    <button @click="exportRankingCSV()" class="bg-emerald-800 hover:bg-emerald-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+                                        <i class="fas fa-file-csv"></i> Eksport CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranking List Table -->
+                        <div id="ranking-print-area" class="overflow-x-auto">
+                            <!-- Print Header -->
+                            <div class="hidden print:block text-center mb-6">
+                                <h2 class="text-xl font-bold uppercase" x-text="schoolConfig.name"></h2>
+                                <h3 class="text-base font-semibold">SENARAI KEDUDUKAN MURID DALAM KELAS</h3>
+                                <p class="text-xs text-slate-600" x-text="'Kelas: ' + rankingFilter.darjah + ' | Peperiksaan: ' + (examsList[rankingFilter.exam] || rankingFilter.exam) + ' | Tahun: ' + rankingFilter.year"></p>
+                            </div>
+
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 border-b border-slate-200 text-xs uppercase text-slate-600 tracking-wider">
+                                        <th class="py-3 px-4 text-center">Kedudukan</th>
+                                        <th class="py-3 px-4">ID Murid</th>
+                                        <th class="py-3 px-6">Nama Murid</th>
+                                        <th class="py-3 px-4">Kelas</th>
+                                        <th class="py-3 px-4 text-center">Jumlah Markah</th>
+                                        <th class="py-3 px-4 text-center">Markah Maksimum</th>
+                                        <th class="py-3 px-4 text-center">Peratus</th>
+                                        <th class="py-3 px-4 text-center">Gred Keseluruhan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-sm">
+                                    <template x-for="item in getClassRankings(rankingFilter.darjah, rankingFilter.exam, rankingFilter.year)" :key="item.id">
+                                        <tr class="hover:bg-slate-50/80" :class="item.rank === 1 ? 'bg-amber-50/40' : ''">
+                                            <td class="py-3.5 px-4 text-center">
+                                                <span class="w-8 h-8 rounded-full inline-flex items-center justify-center font-bold font-mono text-xs shadow-sm"
+                                                      :class="item.rank === 1 ? 'bg-gold-500 text-emerald-950 font-extrabold text-sm' : (item.rank === 2 ? 'bg-slate-200 text-slate-800' : (item.rank === 3 ? 'bg-amber-200 text-amber-900' : 'bg-slate-100 text-slate-600'))"
+                                                      x-text="item.rank">
+                                                </span>
+                                            </td>
+                                            <td class="py-3.5 px-4 font-mono text-xs text-slate-500" x-text="item.id"></td>
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800" x-text="item.name"></td>
+                                            <td class="py-3.5 px-4 text-xs" x-text="item.darjah"></td>
+                                            <td class="py-3.5 px-4 text-center font-mono font-bold text-slate-800" x-text="item.obtained"></td>
+                                            <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-500" x-text="item.max"></td>
+                                            <td class="py-3.5 px-4 text-center font-mono font-bold text-emerald-700" x-text="item.percentage + '%'"></td>
+                                            <td class="py-3.5 px-4 text-center">
+                                                <span class="px-2.5 py-0.5 rounded text-xs font-bold"
+                                                      :class="item.percentage >= 85 ? 'bg-emerald-100 text-emerald-800' : 'bg-teal-100 text-teal-800'"
+                                                      x-text="calculateOverallGrade(item.percentage)">
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="getClassRankings(rankingFilter.darjah, rankingFilter.exam, rankingFilter.year).length === 0">
+                                        <tr>
+                                            <td colspan="8" class="py-8 text-center text-xs text-slate-400 italic">Tiada rekod murid ditemui untuk kelas dan peperiksaan ini.</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+        </template>
+
+    </main>
+
+    <!-- UPDATE SCHOOL LOGO MODAL -->
+    <div x-show="logoModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border-t-4 border-gold-500">
+            <div class="flex items-center justify-between mb-4 border-b pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Kemaskini Logo Sekolah</h3>
+                    <p class="text-xs text-slate-500">Muat naik logo rasmi baharu (Format PNG/JPG/JPEG, max 2MB)</p>
+                </div>
+                <button @click="closeLogoModal()" class="text-slate-400 hover:text-slate-700 text-xl"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Logo Upload Dropzone & Preview -->
+            <div class="space-y-4">
+                <div class="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
+                    <p class="text-xs text-slate-500 mb-2 font-semibold">Pratonton Logo Baharu:</p>
+                    <div class="w-28 h-28 bg-white p-2 rounded-2xl shadow border border-slate-200 flex items-center justify-center overflow-hidden">
+                        <img :src="logoModal.previewUrl || schoolConfig.logoUrl" 
+                             alt="Pratonton Logo" 
+                             class="max-w-full max-h-full object-contain">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Fail Logo</label>
+                    <input type="file" accept="image/png, image/jpeg, image/jpg" @change="handleLogoFileSelect($event)" 
+                           class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-800 file:text-white hover:file:bg-emerald-900 cursor-pointer">
+                    <p class="text-[11px] text-slate-400 mt-1">Logo akan dikemaskini merentasi semua halaman & laporan PDF.</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button @click="closeLogoModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold transition">Batal</button>
+                <button @click="saveNewLogo()" :disabled="!logoModal.previewUrl" 
+                        class="bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow disabled:opacity-50">
+                    <i class="fas fa-save mr-1"></i> Simpan Logo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORT CSV MODAL -->
+    <div x-show="importModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-6 border-t-4 border-gold-500 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4 border-b pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Import CSV / Muat Naik Markah Murid</h3>
+                    <p class="text-xs text-slate-500">Gunakan templat 20 lajur rasmi untuk mengemaskini keputusan murid secara pukal</p>
+                </div>
+                <button @click="resetImportModal()" class="text-slate-400 hover:text-slate-700 text-xl"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Upload Dropzone & Template Shortcut -->
+            <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200">
+                    <div class="text-xs text-emerald-900">
+                        <i class="fas fa-info-circle text-emerald-700 mr-1"></i>
+                        <span>Gunakan templat rasmi 20 lajur (UTF-8 BOM). Pengepala: <strong class="font-mono text-emerald-950">id_murid,nama_murid,kelas,peperiksaan,tahun,amali solat,...</strong></span>
+                    </div>
+                    <button @click="downloadCSVTemplate()" class="shrink-0 bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                        <i class="fas fa-download"></i> Templat CSV 20 Lajur
+                    </button>
+                </div>
+
+                <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:border-emerald-600 transition bg-slate-50/50">
+                    <i class="fas fa-file-csv text-4xl text-emerald-700 mb-2"></i>
+                    <p class="text-xs text-slate-600 mb-3">Pilih fail CSV untuk dimuat naik dan disemak</p>
+                    <input type="file" accept=".csv" @change="handleCSVFileUpload($event)" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-800 file:text-white hover:file:bg-emerald-900 cursor-pointer">
+                </div>
+
+                <!-- Detected Classes Banner -->
+                <template x-if="importModal.detectedClasses && importModal.detectedClasses.length > 0">
+                    <div class="bg-teal-50 border border-teal-200 p-3 rounded-xl text-xs text-teal-900 flex items-center gap-2">
+                        <i class="fas fa-layer-group text-teal-700 text-base"></i>
+                        <div>
+                            <span class="font-bold">Kelas Dikesan Dalam Fail CSV:</span>
+                            <span class="ml-1 font-semibold text-teal-800" x-text="importModal.detectedClasses.join(', ')"></span>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Preview & Validation Report -->
+                <template x-if="importModal.parsedData">
+                    <div class="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-clipboard-check text-emerald-700"></i> Ringkasan Pengesahan CSV:
+                            </h4>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                                  :class="importModal.errorCount === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                  x-text="importModal.errorCount === 0 ? 'Status: Berjaya' : 'Status: Perlu Semakan'">
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3 text-center text-xs">
+                            <div class="bg-emerald-100 text-emerald-800 p-2.5 rounded-xl font-bold border border-emerald-200">
+                                Rekod Sah: <span x-text="importModal.validCount"></span>
+                            </div>
+                            <div class="bg-rose-100 text-rose-800 p-2.5 rounded-xl font-bold border border-rose-200">
+                                Ralat / Amaran: <span x-text="importModal.errorCount"></span>
+                            </div>
+                            <div class="bg-amber-100 text-amber-800 p-2.5 rounded-xl font-bold border border-amber-200">
+                                Baris Diproses: <span x-text="importModal.totalRows"></span>
+                            </div>
+                        </div>
+
+                        <!-- Error/Warning List Breakdown -->
+                        <template x-if="importModal.errors.length > 0">
+                            <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl text-xs text-rose-700 max-h-36 overflow-y-auto space-y-1">
+                                <p class="font-bold flex items-center gap-1">
+                                    <i class="fas fa-exclamation-triangle"></i> Laporan Pengesahan / Amaran Sistem:
+                                </p>
+                                <template x-for="err in importModal.errors" :key="err">
+                                    <p class="font-mono text-[11px]">• <span x-text="err"></span></p>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Data Preview Table -->
+                        <template x-if="importModal.previewRows && importModal.previewRows.length > 0">
+                            <div class="space-y-2">
+                                <h5 class="text-xs font-bold text-slate-700">Pratonton Data Sebelum Import (Maksimum 5 Rekod):</h5>
+                                <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+                                    <table class="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                                                <th class="p-2">ID Murid</th>
+                                                <th class="p-2">Nama</th>
+                                                <th class="p-2">Kelas</th>
+                                                <th class="p-2">Peperiksaan</th>
+                                                <th class="p-2">Tahun</th>
+                                                <th class="p-2 text-center">Jml Subjek</th>
+                                                <th class="p-2 text-center">Jml Markah (Pengiraan Sistem)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100">
+                                            <template x-for="prev in importModal.previewRows" :key="prev.id + prev.examKey + prev.year">
+                                                <tr class="hover:bg-slate-50">
+                                                    <td class="p-2 font-mono font-bold text-slate-700" x-text="prev.id"></td>
+                                                    <td class="p-2 font-medium" x-text="prev.name"></td>
+                                                    <td class="p-2" x-text="prev.darjah"></td>
+                                                    <td class="p-2 text-emerald-800 font-semibold" x-text="examsList[prev.examKey] || prev.examKey"></td>
+                                                    <td class="p-2 font-mono" x-text="prev.year"></td>
+                                                    <td class="p-2 text-center font-mono" x-text="Object.keys(prev.marks).length"></td>
+                                                    <td class="p-2 text-center font-mono font-bold text-emerald-700" x-text="prev.calculatedSum"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6 border-t pt-4">
+                <button @click="resetImportModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold transition">Batal</button>
+                <button @click="confirmImport()" :disabled="!importModal.parsedData || importModal.validCount === 0" 
+                        class="bg-emerald-800 hover:bg-emerald-900 text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow disabled:opacity-50 flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i> Sahkan & Import Markah
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT MARKS MODAL -->
+    <div x-show="editModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 border-t-4 border-gold-500 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4 border-b pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900" x-text="'Kemaskini Markah: ' + (editModal.student ? editModal.student.name : '')"></h3>
+                    <p class="text-xs text-slate-500">Masukkan markah 0 - 100 mengikut peperiksaan dan tahun</p>
+                </div>
+                <button @click="editModal.show = false" class="text-slate-400 hover:text-slate-700 text-xl"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="space-y-4 mb-6">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Peperiksaan</label>
+                        <select x-model="editModal.examKey" @change="updateModalExamMarks()" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-600">
+                            <template x-for="(label, key) in examsList" :key="key">
+                                <option :value="key" x-text="label"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Tahun</label>
+                        <select x-model="editModal.year" @change="updateModalExamMarks()" class="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-600">
+                            <template x-for="yr in getDetectedYears()" :key="yr">
+                                <option :value="yr" x-text="yr"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <template x-for="subj in subjectsList" :key="subj">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <label class="block text-xs font-bold text-slate-700 mb-1" x-text="subj"></label>
+                            <input type="number" min="0" max="100" 
+                                   x-model.number="editModal.currentExamMarks[subj]"
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono text-sm focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none bg-white">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button @click="editModal.show = false" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold transition">Batal</button>
+                <button @click="saveMarks()" class="bg-emerald-800 hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow">Simpan Markah</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-emerald-950 text-emerald-300 py-6 border-t border-emerald-900 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs space-y-2">
+            <p><span x-text="schoolConfig.name"></span>, Muar, Johor. Hak Cipta Terpelihara &copy; 2026.</p>
+            <p class="text-emerald-400 font-arabic text-sm">"Cemerlang Luar Biasa"</p>
+        </div>
+    </footer>
+
+    <!-- Script Application Logic -->
+    <script>
+        function schoolPortal() {
+            const defaultLogo = 'input_file_0.png';
+
+            return {
+                defaultLogo: defaultLogo,
+                activeTab: 'parent',
+                teacherTab: 'overview',
+                currentUser: null,
+                searchQuery: '',
+                filterDarjah: '',
+                selectedExam: 'akhir_tahun',
+                selectedYear: '2026',
+                showTeacherPassword: false,
+                showParentPin: false,
+                isGeneratingPDF: false,
+
+                schoolConfig: {
+                    name: 'Sekolah Agama Parit Jamil',
+                    adminName: 'ZURINA BINTI MANDAR – GURU BESAR',
+                    logoUrl: defaultLogo
+                },
+                
+                modal: {
+                    show: false,
+                    title: '',
+                    message: '',
+                    type: 'success'
+                },
+
+                logoModal: {
+                    show: false,
+                    previewUrl: null,
+                    fileData: null
+                },
+
+                parentLoginForm: { mykid: '', pin: '' },
+                teacherLoginForm: { password: '' },
+
+                rankingFilter: {
+                    darjah: '1 Bestari',
+                    exam: 'akhir_tahun',
+                    year: '2026'
+                },
+
+                importModal: {
+                    show: false,
+                    parsedData: null,
+                    previewRows: [],
+                    detectedClasses: [],
+                    validCount: 0,
+                    errorCount: 0,
+                    totalRows: 0,
+                    errors: []
+                },
+
+                examsList: {
+                    'setengah_tahun': 'Peperiksaan Setengah Tahun',
+                    'upp2': 'Ujian Penilaian Penggal 2 (UPP2)',
+                    'akhir_tahun': 'Peperiksaan Akhir Tahun'
+                },
+
+                // 14 Subjects for Sekolah Agama Johor
+                subjectsList: [
+                    'Amali Solat',
+                    'Al-Quran',
+                    'Tauhid',
+                    'Ibadat',
+                    'Akhlak',
+                    'Sirah',
+                    'Tajwid',
+                    'Tafsir',
+                    'Bahasa Arab',
+                    'Jawi dan Khat',
+                    'Munakaht',
+                    'Muamalat',
+                    'Jenayat',
+                    'Faraid'
+                ],
+
+                // Exactly 20 Prescribed CSV Columns Header
+                csvTemplateHeaders: [
+                    'id_murid', 'nama_murid', 'kelas', 'peperiksaan', 'tahun',
+                    'amali solat', 'alquran', 'tauhid', 'ibadat', 'akhlak',
+                    'sirah', 'tajwid', 'tafsir', 'bahasa arab', 'jawi dan khat',
+                    'munakaht', 'muamalat', 'jenayat', 'faraid', 'jumlah markah'
+                ],
+
+                // Initial Test Students with Test Sample Data
+                students: [
+                    {
+                        id: 'M001',
+                        name: 'Ahmad',
+                        mykid: 'M001',
+                        pin: '123456',
+                        darjah: '1 Bestari',
+                        records: {
+                            '2026_akhir_tahun': {
+                                marks: { 'Amali Solat': 85, 'Al-Quran': 80, 'Tauhid': 85, 'Ibadat': 90, 'Akhlak': 80, 'Sirah': 85, 'Tajwid': 80, 'Tafsir': 85, 'Bahasa Arab': 70, 'Jawi dan Khat': 75, 'Munakaht': 70, 'Muamalat': 70, 'Jenayat': 75, 'Faraid': 70 },
+                                isComplete: true
+                            }
+                        }
+                    },
+                    {
+                        id: 'M002',
+                        name: 'Siti',
+                        mykid: 'M002',
+                        pin: '123456',
+                        darjah: '1 Bestari',
+                        records: {
+                            '2026_akhir_tahun': {
+                                marks: { 'Amali Solat': 92, 'Al-Quran': 90, 'Tauhid': 95, 'Ibadat': 90, 'Akhlak': 92, 'Sirah': 90, 'Tajwid': 88, 'Tafsir': 90, 'Bahasa Arab': 85, 'Jawi dan Khat': 88, 'Munakaht': 85, 'Muamalat': 85, 'Jenayat': 80, 'Faraid': 80 },
+                                isComplete: true
+                            }
+                        }
+                    },
+                    {
+                        id: 'M003',
+                        name: 'Ali',
+                        mykid: 'M003',
+                        pin: '123456',
+                        darjah: '1 Amanah',
+                        records: {
+                            '2026_akhir_tahun': {
+                                marks: { 'Amali Solat': 78, 'Al-Quran': 75, 'Tauhid': 80, 'Ibadat': 78, 'Akhlak': 80, 'Sirah': 75, 'Tajwid': 70, 'Tafsir': 75, 'Bahasa Arab': 70, 'Jawi dan Khat': 72, 'Munakaht': 70, 'Muamalat': 70, 'Jenayat': 70, 'Faraid': 65 },
+                                isComplete: true
+                            }
+                        }
+                    },
+                    {
+                        id: 'M004',
+                        name: 'Aminah',
+                        mykid: 'M004',
+                        pin: '123456',
+                        darjah: '1 Bestari',
+                        records: {
+                            '2026_akhir_tahun': {
+                                marks: { 'Amali Solat': 88, 'Al-Quran': 85, 'Tauhid': 88, 'Ibadat': 90, 'Akhlak': 85, 'Sirah': 88, 'Tajwid': 85, 'Tafsir': 85, 'Bahasa Arab': 80, 'Jawi dan Khat': 82, 'Munakaht': 80, 'Muamalat': 80, 'Jenayat': 80, 'Faraid': 74 },
+                                isComplete: true
+                            }
+                        }
+                    },
+                    {
+                        id: 'M005',
+                        name: 'Farah',
+                        mykid: 'M005',
+                        pin: '123456',
+                        darjah: '1 Amanah',
+                        records: {
+                            '2026_akhir_tahun': {
+                                marks: { 'Amali Solat': 90, 'Al-Quran': 88, 'Tauhid': 92, 'Ibadat': 90, 'Akhlak': 90, 'Sirah': 88, 'Tajwid': 85, 'Tafsir': 88, 'Bahasa Arab': 82, 'Jawi dan Khat': 85, 'Munakaht': 80, 'Muamalat': 80, 'Jenayat': 82, 'Faraid': 80 },
+                                isComplete: true
+                            }
+                        }
+                    }
+                ],
+
+                // Helper: Dynamic Class List Detection
+                getDetectedClasses() {
+                    const set = new Set();
+                    this.students.forEach(s => {
+                        if (s.darjah) set.add(s.darjah.trim());
+                    });
+                    const arr = Array.from(set).sort();
+                    return arr.length > 0 ? arr : ['1 Bestari', '1 Amanah'];
+                },
+
+                // Helper: Dynamic Year List Detection
+                getDetectedYears() {
+                    const set = new Set(['2026']);
+                    this.students.forEach(s => {
+                        if (s.records) {
+                            Object.keys(s.records).forEach(key => {
+                                const yr = key.split('_')[0];
+                                if (yr) set.add(yr);
+                            });
+                        }
+                    });
+                    return Array.from(set).sort().reverse();
+                },
+
+                // Download Official 20-Column CSV Template with UTF-8 BOM
+                downloadCSVTemplate() {
+                    const headers = this.csvTemplateHeaders.join(',');
+                    const sampleRow = [
+                        'M001', 'Ahmad', '1 Bestari', 'akhir_tahun', '2026',
+                        '85', '80', '85', '90', '80', '85', '80', '85', '70', '75', '70', '70', '75', '70', ''
+                    ].join(',');
+                    
+                    const csvString = headers + '\n' + sampleRow + '\n';
+                    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'templat_markah_sekolah_agama_parit_jamil.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                },
+
+                // Split CSV Line with quote handling
+                splitCSVLine(line) {
+                    const result = [];
+                    let cur = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"' || char === "'") {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            result.push(cur.trim().replace(/^["']|["']$/g, ''));
+                            cur = '';
+                        } else {
+                            cur += char;
+                        }
+                    }
+                    result.push(cur.trim().replace(/^["']|["']$/g, ''));
+                    return result;
+                },
+
+                // Header-Based CSV Import & Validation Handler
+                handleCSVFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const text = e.target.result;
+                        this.parseAndValidateCSV(text);
+                    };
+                    reader.readAsText(file, 'UTF-8');
+                },
+
+                parseAndValidateCSV(text) {
+                    const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                    if (lines.length < 2) {
+                        this.importModal.errors = ['Fail CSV kosong atau tidak mengandungi pengepala yang sah.'];
+                        this.importModal.parsedData = null;
+                        return;
+                    }
+
+                    // Normalize headers
+                    const headerLine = lines[0].replace(/^\uFEFF/, '');
+                    const headers = this.splitCSVLine(headerLine).map(h => h.toLowerCase().trim());
+
+                    const requiredCols = ['id_murid', 'peperiksaan', 'jumlah markah'];
+                    const missingCols = requiredCols.filter(c => !headers.includes(c));
+
+                    if (missingCols.length > 0) {
+                        this.importModal.errors = [`Lajur wajib tidak ditemui: ${missingCols.join(', ')}`];
+                        this.importModal.parsedData = null;
+                        return;
+                    }
+
+                    const idIdx = headers.indexOf('id_murid');
+                    const nameIdx = headers.indexOf('nama_murid');
+                    const classIdx = headers.indexOf('kelas');
+                    const examIdx = headers.indexOf('peperiksaan');
+                    const yearIdx = headers.indexOf('tahun');
+                    const totalIdx = headers.indexOf('jumlah markah');
+
+                    const subjIndices = {};
+                    this.subjectsList.forEach(subj => {
+                        const hName = subj.toLowerCase();
+                        const idx = headers.indexOf(hName);
+                        if (idx !== -1) {
+                            subjIndices[subj] = idx;
+                        }
+                    });
+
+                    let valid = 0;
+                    let errors = [];
+                    let parsedRecords = [];
+                    let previewRows = [];
+                    let duplicateCheck = new Set();
+                    let detectedClassesSet = new Set();
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = this.splitCSVLine(lines[i]);
+                        if (cols.length < 2 || cols.every(c => c === '')) continue;
+
+                        const rowNum = i + 1;
+                        const studentId = cols[idIdx];
+                        const examKey = cols[examIdx] ? cols[examIdx].toLowerCase().trim() : 'akhir_tahun';
+                        const studentName = nameIdx !== -1 ? cols[nameIdx] : '';
+                        const className = classIdx !== -1 ? cols[classIdx].trim() : '1 Bestari';
+                        const yearVal = yearIdx !== -1 && cols[yearIdx] ? cols[yearIdx].trim() : '2026';
+                        const rawCsvTotal = totalIdx !== -1 ? cols[totalIdx] : '';
+
+                        if (!studentId) {
+                            errors.push(`Baris ${rowNum}: 'id_murid' tidak boleh kosong.`);
+                            continue;
+                        }
+
+                        if (className) {
+                            detectedClassesSet.add(className);
+                        }
+
+                        // Duplicate record check based on Student ID + Exam + Year
+                        const uniqueComboKey = `${studentId.toUpperCase()}_${examKey}_${yearVal}`;
+                        if (duplicateCheck.has(uniqueComboKey)) {
+                            errors.push(`Baris ${rowNum}: Rekod bertindih untuk Murid ${studentId}, Peperiksaan '${examKey}' dan Tahun '${yearVal}'.`);
+                            continue;
+                        }
+                        duplicateCheck.add(uniqueComboKey);
+
+                        let rowMarks = {};
+                        let markErrors = false;
+                        let markSum = 0;
+                        let subjectCount = 0;
+
+                        Object.keys(subjIndices).forEach(subj => {
+                            const cIdx = subjIndices[subj];
+                            const rawMark = cols[cIdx];
+
+                            if (rawMark !== undefined && rawMark !== null && rawMark !== '') {
+                                const markVal = parseFloat(rawMark);
+                                if (isNaN(markVal) || markVal < 0 || markVal > 100) {
+                                    errors.push(`Baris ${rowNum}, Murid ${studentName || studentId}, Subjek '${subj}': Markah '${rawMark}' tidak sah (0-100).`);
+                                    markErrors = true;
+                                } else {
+                                    rowMarks[subj] = markVal;
+                                    markSum += markVal;
+                                    subjectCount++;
+                                }
+                            }
+                        });
+
+                        if (markErrors) continue;
+
+                        // Check CSV provided total vs system sum calculation
+                        if (rawCsvTotal !== undefined && rawCsvTotal !== '') {
+                            const parsedCsvTotal = parseFloat(rawCsvTotal);
+                            if (!isNaN(parsedCsvTotal) && parsedCsvTotal !== markSum) {
+                                errors.push(`Baris ${rowNum}, Murid ${studentName || studentId}: Amaran! Jumlah markah CSV (${parsedCsvTotal}) berbeza daripada hasil pengiraan subjek (${markSum}). Nilai pengiraan (${markSum}) digunakan.`);
+                            }
+                        }
+
+                        const isComplete = (subjectCount === this.subjectsList.length);
+
+                        valid++;
+                        parsedRecords.push({
+                            id: studentId.toUpperCase(),
+                            name: studentName,
+                            darjah: className,
+                            examKey: examKey,
+                            year: yearVal,
+                            marks: rowMarks,
+                            isComplete: isComplete,
+                            calculatedSum: markSum
+                        });
+
+                        if (previewRows.length < 5) {
+                            previewRows.push({
+                                id: studentId.toUpperCase(),
+                                name: studentName,
+                                darjah: className,
+                                examKey: examKey,
+                                year: yearVal,
+                                marks: rowMarks,
+                                calculatedSum: markSum
+                            });
+                        }
+                    }
+
+                    this.importModal.parsedData = parsedRecords;
+                    this.importModal.previewRows = previewRows;
+                    this.importModal.detectedClasses = Array.from(detectedClassesSet);
+                    this.importModal.validCount = valid;
+                    this.importModal.errorCount = errors.length;
+                    this.importModal.totalRows = lines.length - 1;
+                    this.importModal.errors = errors;
+                },
+
+                confirmImport() {
+                    if (!this.importModal.parsedData || this.importModal.parsedData.length === 0) return;
+
+                    this.importModal.parsedData.forEach(rec => {
+                        let student = this.students.find(s => s.id === rec.id);
+                        if (!student) {
+                            student = {
+                                id: rec.id,
+                                name: rec.name || 'Murid ' + rec.id,
+                                mykid: rec.id,
+                                pin: '123456',
+                                darjah: rec.darjah || '1 Bestari',
+                                records: {}
+                            };
+                            this.students.push(student);
+                        } else {
+                            if (rec.name) student.name = rec.name;
+                            if (rec.darjah) student.darjah = rec.darjah;
+                        }
+
+                        if (!student.records) student.records = {};
+                        const recordKey = `${rec.year}_${rec.examKey}`;
+                        
+                        student.records[recordKey] = {
+                            marks: rec.marks,
+                            isComplete: rec.isComplete
+                        };
+                    });
+
+                    // Update filter class defaults if needed
+                    const detected = this.getDetectedClasses();
+                    if (detected.length > 0 && !detected.includes(this.rankingFilter.darjah)) {
+                        this.rankingFilter.darjah = detected[0];
+                    }
+
+                    this.showModal('Import Berjaya', `Data markah dikemaskini! ${this.importModal.validCount} rekod murid disahkan.`, 'success');
+                    this.resetImportModal();
+                },
+
+                resetImportModal() {
+                    this.importModal = {
+                        show: false,
+                        parsedData: null,
+                        previewRows: [],
+                        detectedClasses: [],
+                        validCount: 0,
+                        errorCount: 0,
+                        totalRows: 0,
+                        errors: []
+                    };
+                },
+
+                // Export Full 20-Column Marks CSV
+                exportCSV() {
+                    const headers = this.csvTemplateHeaders.join(',');
+                    let rows = [];
+
+                    const sanitizeCSV = (str) => {
+                        const val = String(str || '');
+                        if (['=', '+', '-', '@'].includes(val.charAt(0))) {
+                            return `'${val}`;
+                        }
+                        return val;
+                    };
+
+                    this.students.forEach(s => {
+                        if (s.records) {
+                            Object.keys(s.records).forEach(recKey => {
+                                const parts = recKey.split('_');
+                                const yearVal = parts[0];
+                                const exKey = parts.slice(1).join('_');
+                                const rec = s.records[recKey];
+
+                                let row = [
+                                    s.id,
+                                    `"${sanitizeCSV(s.name)}"`,
+                                    `"${sanitizeCSV(s.darjah)}"`,
+                                    exKey,
+                                    yearVal
+                                ];
+
+                                let markSum = 0;
+                                this.subjectsList.forEach(subj => {
+                                    const mark = (rec.marks && rec.marks[subj] !== undefined) ? rec.marks[subj] : '';
+                                    row.push(mark);
+                                    if (typeof mark === 'number') markSum += mark;
+                                });
+
+                                row.push(markSum);
+                                rows.push(row.join(','));
+                            });
+                        }
+                    });
+
+                    const csvContent = '\uFEFF' + headers + '\n' + rows.join('\n') + '\n';
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'markah_sekolah_agama_parit_jamil.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                },
+
+                getStudentTotals(studentId, examKey, yearVal = '2026') {
+                    const st = this.students.find(s => s.id === studentId);
+                    const recordKey = `${yearVal}_${examKey}`;
+                    
+                    if (!st || !st.records || !st.records[recordKey]) {
+                        return { obtained: 0, max: 0, percentage: '0.0', isComplete: false };
+                    }
+
+                    const rec = st.records[recordKey];
+                    let sumObtained = 0;
+                    let maxPossible = 0;
+
+                    this.subjectsList.forEach(subj => {
+                        const mark = rec.marks[subj];
+                        if (mark !== undefined && mark !== null && mark !== '') {
+                            const val = parseFloat(mark);
+                            if (!isNaN(val)) {
+                                sumObtained += val;
+                                maxPossible += 100;
+                            }
+                        }
+                    });
+
+                    const percentage = maxPossible > 0 ? ((sumObtained / maxPossible) * 100).toFixed(1) : '0.0';
+
+                    return {
+                        obtained: sumObtained,
+                        max: maxPossible,
+                        percentage: percentage,
+                        isComplete: rec.isComplete
+                    };
+                },
+
+                // Competition Ranking Algorithm (Handles ties: 1, 2, 2, 4)
+                getClassRankings(darjahName, examKey, yearVal = '2026') {
+                    const recordKey = `${yearVal}_${examKey}`;
+                    
+                    let classList = this.students.filter(s => 
+                        s.darjah === darjahName && 
+                        s.records && 
+                        s.records[recordKey]
+                    );
+
+                    let scoredList = classList.map(st => {
+                        const totals = this.getStudentTotals(st.id, examKey, yearVal);
+                        return {
+                            id: st.id,
+                            name: st.name,
+                            darjah: st.darjah,
+                            obtained: totals.obtained,
+                            max: totals.max,
+                            percentage: totals.percentage,
+                            isComplete: totals.isComplete
+                        };
+                    });
+
+                    // Sort by total marks obtained descending
+                    scoredList.sort((a, b) => b.obtained - a.obtained);
+
+                    // Apply Competition Ranking
+                    let rank = 1;
+                    for (let i = 0; i < scoredList.length; i++) {
+                        if (!scoredList[i].isComplete) {
+                            scoredList[i].rank = 'Tidak Lengkap';
+                            continue;
+                        }
+
+                        if (i > 0 && scoredList[i].obtained === scoredList[i - 1].obtained && scoredList[i - 1].isComplete) {
+                            scoredList[i].rank = scoredList[i - 1].rank;
+                        } else {
+                            scoredList[i].rank = i + 1;
+                        }
+                    }
+
+                    return scoredList;
+                },
+
+                getStudentRankDetail(studentId, examKey, yearVal = '2026') {
+                    const st = this.students.find(s => s.id === studentId);
+                    if (!st) return { rank: '-', totalStudents: 0, rankText: '-' };
+
+                    const rankings = this.getClassRankings(st.darjah, examKey, yearVal);
+                    const found = rankings.find(r => r.id === studentId);
+
+                    if (found) {
+                        if (found.rank === 'Tidak Lengkap') {
+                            return { rank: '-', totalStudents: rankings.length, rankText: 'Markah Tidak Lengkap' };
+                        }
+                        return {
+                            rank: found.rank,
+                            totalStudents: rankings.length,
+                            rankText: `${found.rank} daripada ${rankings.length} murid`
+                        };
+                    }
+
+                    return { rank: '-', totalStudents: rankings.length, rankText: 'Belum Dinilai' };
+                },
+
+                printRankingList() {
+                    window.print();
+                },
+
+                exportRankingCSV() {
+                    const rankings = this.getClassRankings(this.rankingFilter.darjah, this.rankingFilter.exam, this.rankingFilter.year);
+                    let rows = ['Kedudukan,ID Murid,Nama Murid,Kelas,Jumlah Markah,Markah Maksimum,Peratus Keseluruhan'];
+
+                    rankings.forEach(r => {
+                        rows.push([
+                            r.rank,
+                            r.id,
+                            `"${r.name}"`,
+                            `"${r.darjah}"`,
+                            r.obtained,
+                            r.max,
+                            `"${r.percentage}%"`
+                        ].join(','));
+                    });
+
+                    const csvContent = '\uFEFF' + rows.join('\n') + '\n';
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `kedudukan_${this.rankingFilter.darjah.replace(/ /g, '_')}_${this.rankingFilter.year}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                },
+
+                loginParent() {
+                    if (!this.parentLoginForm.mykid || !this.parentLoginForm.pin) {
+                        this.showModal('Ralat Log Masuk', 'Sila masukkan No. ID Murid / MyKid dan No. PIN keselamatan.', 'error');
+                        return;
+                    }
+                    const searchId = this.parentLoginForm.mykid.trim().toUpperCase();
+                    const student = this.students.find(s => (s.mykid.toUpperCase() === searchId || s.id.toUpperCase() === searchId) && s.pin === this.parentLoginForm.pin.trim());
+                    
+                    if (student) {
+                        this.currentUser = { name: student.name, role: 'parent', studentId: student.id };
+                        this.currentStudent = student;
+                    } else {
+                        this.showModal('Gagal Log Masuk', 'No. ID Murid / MyKid atau PIN tidak sah. Sila semak semula.', 'error');
+                    }
+                },
+
+                loginTeacher() {
+                    if (this.teacherLoginForm.password) {
+                        this.currentUser = { name: this.schoolConfig.adminName, role: 'teacher' };
+                    } else {
+                        this.showModal('Akses Ditolak', 'Sila masukkan kata laluan pentadbir.', 'error');
+                    }
+                },
+
+                logout() {
+                    this.currentUser = null;
+                    this.parentLoginForm = { mykid: '', pin: '' };
+                    this.teacherLoginForm = { password: '' };
+                },
+
+                showModal(title, message, type = 'success') {
+                    this.modal = { show: true, title, message, type };
+                },
+
+                openLogoModal() {
+                    this.logoModal.show = true;
+                },
+
+                closeLogoModal() {
+                    this.logoModal = { show: false, previewUrl: null, fileData: null };
+                },
+
+                handleLogoFileSelect(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (evt) => {
+                            this.logoModal.previewUrl = evt.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                },
+
+                saveNewLogo() {
+                    if (this.logoModal.previewUrl) {
+                        this.schoolConfig.logoUrl = this.logoModal.previewUrl;
+                        try {
+                            localStorage.setItem('sapj_school_logo', this.logoModal.previewUrl);
+                        } catch(err) {}
+                        this.showModal('Berjaya', 'Logo sekolah berjaya dikemaskini.', 'success');
+                        this.closeLogoModal();
+                    }
+                },
+
+                getSubjectMark(studentId, examKey, yearVal, subj) {
+                    const st = this.students.find(s => s.id === studentId);
+                    const recordKey = `${yearVal}_${examKey}`;
+                    return (st && st.records && st.records[recordKey] && st.records[recordKey].marks[subj] !== undefined) 
+                           ? st.records[recordKey].marks[subj] : 0;
+                },
+
+                calculateGrade(mark) {
+                    if (mark >= 85) return 'A';
+                    if (mark >= 70) return 'B';
+                    if (mark >= 60) return 'C';
+                    if (mark >= 50) return 'D';
+                    return 'E';
+                },
+
+                getGradeBadgeClass(mark) {
+                    if (mark >= 85) return 'bg-emerald-100 text-emerald-800';
+                    if (mark >= 70) return 'bg-teal-100 text-teal-800';
+                    if (mark >= 60) return 'bg-blue-100 text-blue-800';
+                    if (mark >= 50) return 'bg-amber-100 text-amber-800';
+                    return 'bg-rose-100 text-rose-800';
+                },
+
+                getSubjectRemarkBySubject(studentId, examKey, yearVal, subj) {
+                    const mark = this.getSubjectMark(studentId, examKey, yearVal, subj);
+                    if (mark >= 85) return 'Cemerlang (Mumtaz)';
+                    if (mark >= 70) return 'Sangat Baik (Jayyid Jiddan)';
+                    if (mark >= 60) return 'Baik (Jayyid)';
+                    if (mark >= 50) return 'Memuaskan (Maqbul)';
+                    return 'Perlu Usaha Lagi (Rasib)';
+                },
+
+                calculateOverallGrade(avg) {
+                    const num = parseFloat(avg);
+                    if (num >= 85) return 'Mumtaz (A)';
+                    if (num >= 70) return 'Jayyid Jiddan (B)';
+                    if (num >= 60) return 'Jayyid (C)';
+                    if (num >= 50) return 'Maqbul (D)';
+                    return 'Rasib (E)';
+                },
+
+                getTeacherRemarkOverall(avg) {
+                    const num = parseFloat(avg);
+                    if (num >= 85) return 'Tahniah! Prestasi yang sangat cemerlang. Teruskan usaha dan kekalkan kejayaan ini.';
+                    if (num >= 60) return 'Pencapaian yang baik. Boleh ditingkatkan lagi dengan lebih fokus pada subjek teras.';
+                    return 'Perlu lebih banyak ulangkaji dan bimbingan berterusan di rumah.';
+                },
+
+                calculatePassPercentage() {
+                    if (this.students.length === 0) return '0.0';
+                    let passed = 0;
+                    this.students.forEach(s => {
+                        const totals = this.getStudentTotals(s.id, 'akhir_tahun', '2026');
+                        if (parseFloat(totals.percentage) >= 50) passed++;
+                    });
+                    return ((passed / this.students.length) * 100).toFixed(1);
+                },
+
+                calculateSchoolAverage() {
+                    if (this.students.length === 0) return '0.0';
+                    let totalPercentage = 0;
+                    this.students.forEach(s => {
+                        totalPercentage += parseFloat(this.getStudentTotals(s.id, 'akhir_tahun', '2026').percentage);
+                    });
+                    return (totalPercentage / this.students.length).toFixed(1);
+                },
+
+                getGradeDistribution() {
+                    let counts = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+                    let totalSubjects = 0;
+                    this.students.forEach(s => {
+                        if (s.records) {
+                            Object.values(s.records).forEach(rec => {
+                                Object.values(rec.marks).forEach(m => {
+                                    totalSubjects++;
+                                    const g = this.calculateGrade(m);
+                                    if (g === 'A') counts.A++;
+                                    else if (g === 'B') counts.B++;
+                                    else if (g === 'C') counts.C++;
+                                    else if (g === 'D') counts.D++;
+                                    else counts.E++;
+                                });
+                            });
+                        }
+                    });
+
+                    const total = totalSubjects || 1;
+                    return [
+                        { grade: 'A', label: 'Mumtaz (A: 85 - 100)', count: counts.A, percentage: ((counts.A/total)*100).toFixed(1), bgClass: 'bg-emerald-600', colorClass: 'text-emerald-700' },
+                        { grade: 'B', label: 'Jayyid Jiddan (B: 65 - 84)', count: counts.B, percentage: ((counts.B/total)*100).toFixed(1), bgClass: 'bg-teal-600', colorClass: 'text-teal-700' },
+                        { grade: 'C', label: 'Jayyid (C: 50 - 64)', count: counts.C, percentage: ((counts.C/total)*100).toFixed(1), bgClass: 'bg-amber-500', colorClass: 'text-amber-600' },
+                        { grade: 'D', label: 'Maqbul / Rasib (D/E: 0 - 49)', count: counts.D + counts.E, percentage: (((counts.D + counts.E)/total)*100).toFixed(1), bgClass: 'bg-rose-500', colorClass: 'text-rose-600' }
+                    ];
+                },
+
+                getSubjAverage(subject) {
+                    let total = 0;
+                    let count = 0;
+                    this.students.forEach(s => {
+                        if (s.records) {
+                            Object.values(s.records).forEach(rec => {
+                                if (rec.marks && rec.marks[subject] !== undefined) {
+                                    total += rec.marks[subject];
+                                    count++;
+                                }
+                            });
+                        }
+                    });
+                    return count > 0 ? (total / count).toFixed(1) : '0.0';
+                },
+
+                downloadPDF() {
+                    if (!this.currentStudent) return;
+                    this.isGeneratingPDF = true;
+
+                    const element = document.getElementById('pdf-report-area');
+                    const filename = `Keputusan_${this.currentStudent.name.replace(/[^a-zA-Z0-9]/g, '_')}_${this.selectedYear}.pdf`;
+
+                    const opt = {
+                        margin:       [0.3, 0.3, 0.3, 0.3],
+                        filename:     filename,
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2, useCORS: true },
+                        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+                    };
+
+                    html2pdf().set(opt).from(element).save().then(() => {
+                        this.isGeneratingPDF = false;
+                        this.showModal('Berjaya', 'Laporan keputusan PDF berjaya dijana dan dimuat turun.', 'success');
+                    }).catch(err => {
+                        this.isGeneratingPDF = false;
+                        this.showModal('Ralat Penjanaan', 'PDF gagal dijana. Sila cuba sekali lagi.', 'error');
+                    });
+                },
+
+                openEditMarks(student) {
+                    this.editModal.student = student;
+                    this.editModal.examKey = 'akhir_tahun';
+                    this.editModal.year = '2026';
+                    
+                    this.updateModalExamMarks();
+                    this.editModal.show = true;
+                },
+
+                updateModalExamMarks() {
+                    if (this.editModal.student) {
+                        const recordKey = `${this.editModal.year}_${this.editModal.examKey}`;
+                        if (!this.editModal.student.records) this.editModal.student.records = {};
+                        if (!this.editModal.student.records[recordKey]) {
+                            this.editModal.student.records[recordKey] = { marks: {}, isComplete: true };
+                        }
+                        
+                        // Copy marks
+                        const marksObj = JSON.parse(JSON.stringify(this.editModal.student.records[recordKey].marks || {}));
+                        this.subjectsList.forEach(subj => {
+                            if (marksObj[subj] === undefined) marksObj[subj] = 0;
+                        });
+                        
+                        this.editModal.currentExamMarks = marksObj;
+                    }
+                },
+
+                saveMarks() {
+                    if (this.editModal.student) {
+                        const recordKey = `${this.editModal.year}_${this.editModal.examKey}`;
+                        this.editModal.student.records[recordKey] = {
+                            marks: JSON.parse(JSON.stringify(this.editModal.currentExamMarks)),
+                            isComplete: true
+                        };
+                        this.showModal('Berjaya', 'Markah peperiksaan murid telah berjaya dikemaskini.', 'success');
+                        this.editModal.show = false;
+                    }
+                },
+
+                get filteredStudents() {
+                    return this.students.filter(s => {
+                        const matchesQuery = s.name.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
+                                             s.mykid.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
+                                             s.id.toLowerCase().includes(this.searchQuery.toLowerCase());
+                        const matchesDarjah = !this.filterDarjah || s.darjah === this.filterDarjah;
+                        return matchesQuery && matchesDarjah;
+                    });
+                },
+
+                editModal: {
+                    show: false,
+                    student: null,
+                    examKey: 'akhir_tahun',
+                    year: '2026',
+                    currentExamMarks: {}
+                },
+
+                init() {
+                    const savedLogo = localStorage.getItem('sapj_school_logo');
+                    if (savedLogo) {
+                        this.schoolConfig.logoUrl = savedLogo;
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>
